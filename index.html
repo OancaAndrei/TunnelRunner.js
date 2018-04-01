@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>TunnelRunner.js</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+  <div id="overlay">
+    <div id="score">0</div>
+  </div>
+  <div id="start">
+    <div id="message">Click to start!</div>
+    <div id="anaglyph" class="button">Toggle Anaglyph</div>
+    <div id="tracker" class="button">Toggle Tracker</div>
+  </div>
+  <div id="tracker_container">
+    <video id="video" width="160" height="120" class=""></video>
+    <canvas id="output" width="160" height="120" class=" alpha"></canvas>
+  </div>
+  <script src="js/color_tracker.js"></script>
+  <script async src="js/opencv/opencv.js" onload="Tracker.scriptLoaded()" type="text/javascript"></script>
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script src="js/three.min.js"></script>
+  <script src="js/effects/anaglyph.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+  $(function() {
+    $("#tracker").hide();
+    Game.init();
+    $("#start").on('click', function() {
+      $("#score").hide();
+      Game.reset();
+    });
+    $("#anaglyph").on('click', function(event) {
+      event.stopPropagation();
+      Game.properties.anaglyph = !Game.properties.anaglyph;
+    });
+    $("#tracker").on('click', function(event) {
+      event.stopPropagation();
+      Game.properties.tracker = !Game.properties.tracker;
+      if (Game.properties.tracker) {
+        Tracker.startTracking();
+        $("#output").show();
+        
+        // Change difficulty
+        Game.properties.count = 5;
+        Game.spawnLevel();
+      } else {
+        Tracker.stopTracking();
+        $("#output").hide();
+        
+        // Change difficulty
+        Game.properties.count = 25;
+        Game.spawnLevel();
+      }
+    });
+  });
+</script>
+</body>
+</html>

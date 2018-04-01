@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>webcam and opencv test</title>
+  <style>
+  video, canvas {
+    margin-left: 100px;
+    margin-top: 35px;
+    position: absolute;
+  }
+  .reversed {
+    transform: rotate(180deg);
+  }
+  .alpha {
+    opacity: 1;
+  }
+  .color {
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    right: 50px;
+    top: 50px;
+    background-color: hsl(110, 50%, 50%);
+  }
+  </style>
+</head>
+<body>
+  <video id="video" width="640" height="360" class="reversed"></video>
+  <canvas id="output" width="640" height="360" class="reversed alpha"></canvas>
+  <div class="color"></div>
+  <script type="text/javascript">
+  // [HSL HUE] × 255 ÷ 360
+  let minColor = [35,10,10,0];
+  let maxColor = [65,255,255,255];
+  
+  window.onload = function() {
+    setTimeout(function () {
+      init();
+    }, 5000);
+  };
+  
+  function init() {
+    
+    // if (this.readyState !== 'loaded' && this.readyState !== 'complete') {
+    //   return;
+    // }
+    
+    navigator.mediaDevices.getUserMedia({ audio: false, video: {width: 640, height: 360} })
+    .then(function(mediaStream) {
+      console.log(mediaStream);
+      var videoElement = document.getElementById("video");
+      videoElement.srcObject = mediaStream;
+      videoElement.onloadedmetadata = function(e) {
+        videoElement.play();
+        
+        minColor = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC3, minColor);
+        maxColor = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC3, maxColor);
+        
+        let M = cv.Mat.ones(5, 5, cv.CV_8U);
+        let anchor = new cv.Point(-1, -1);
+        
+        let frame = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC4);
+        let hsv = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC3);
+        let mask = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC1);
+        let cap = new cv.VideoCapture(videoElement);
+        let iterations = 2;
+        
+        let color = new cv.Scalar(255, 0, 0, 255);
+        
+        const FPS = 30;
+        function processVideo() {
+          try {
+            // if (!streaming) {
+            //   // clean and stop.
+            //   src.delete();
+            //   dst.delete();
+            //   return;
+            // }
+            let begin = Date.now();
+            
+            // Save frame to opencv Matrix
+            cap.read(frame);
+            
+            // Convert frame to HSV
+            cv.cvtColor(frame, hsv, cv.COLOR_RGB2HSV);
+            
+            // Filter by range
+            cv.inRange(hsv, minColor, maxColor, mask);
+            cv.erode(mask, mask, M, anchor, iterations, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+            cv.dilate(mask, mask, M, anchor, iterations, cv.BORDER_CONSTANT, cv.morphologyDefaultBorderValue());
+            
+            // Find contours
+            let contours = new cv.MatVector();
+            let hierarchy = new cv.Mat();
+            cv.findContours(mask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_SIMPLE);
+            
+            // Select biggest contours
+            let minArea = 1000;
+            let area1 = 0;
+            let area2 = 0;
+            let contour1 = -1;
+            let contour2 = -1;
+            
+            for (let i = 0; i < contours.size(); ++i) {
+              let area = cv.contourArea(contours.get(i), false);
+              if (area < minArea) continue;
+              if (area >= area1) {
+                area2 = area1;
+                contour2 = contour1;
+                area1 = area;
+                contour1 = i;
+              }
+            }
+            
+            // Show selected contours
+            if (contour1 != -1) {
+              // cv.drawContours(frame, contours, contour1, color, 1, cv.LINE_4, hierarchy, 2);
+              let circle = cv.minEnclosingCircle(contours.get(contour1));
+              cv.circle(frame, circle.center, circle.radius, color);
+            }
+            if (contour2 != -1) {    
+              // cv.drawContours(frame, contours, contour2, color, 1, cv.LINE_4, hierarchy, 2);
+              let circle = cv.minEnclosingCircle(contours.get(contour2));
+              cv.circle(frame, circle.center, circle.radius, color);
+            }
+            
+            contours.delete();
+            hierarchy.delete();
+            
+            // Show frame
+            cv.imshow('output', frame);
+            
+            // Schedule next frame update
+            let delay = 1000/FPS - (Date.now() - begin);
+            setTimeout(processVideo, delay);
+          } catch (err) {
+            // utils.printError(err);
+            console.log(err);
+          }
+        };
+        
+        // schedule the first one.
+        setTimeout(processVideo, 0);
+        
+      };
+    })
+    .catch(function(err) {
+      console.log(err.name + ": " + err.message);
+    });    
+  }
+  </script>
+  <script src="js/opencv/opencv.js" type="text/javascript"></script>
+</body>
+</html>

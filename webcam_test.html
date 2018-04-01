@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <title>webcam test</title>
+  <script type="text/javascript">
+  window.onload = function() {
+    navigator.mediaDevices.getUserMedia({ audio: false, video: true })
+    .then(function(stream) {
+      var videoElement = document.getElementById("video");
+      videoElement.srcObject = mediaStream;
+      videoElement.onloadedmetadata = function(e) {
+        videoElement.play();
+      };
+    })
+    .catch(function(err) {
+      console.log(err.name + ": " + err.message);
+    });    
+  }; 
+  </script>
+  <style>
+  .reversed {
+    transform: rotate(180deg);
+  }
+  </style>
+</head>
+<body>
+  <video id="video" width="1280" height="720" class="reversed"></video>
+</body>
+</html>
