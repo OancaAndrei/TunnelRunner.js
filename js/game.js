@@ -315,7 +315,7 @@ Game.resetBlock = function(block) {
   var targetPlayer = Math.random() >= Game.properties.targetPlayerRate;
   var x = 0;
   var y = 0;
-  if (targetPlayer) {
+  if (targetPlayer && !Game.properties.invulnerable) {
     // Aim for the player
     if (block.isVertical) {
       var relativePosition = Game.camera.position.x + Game.properties.tunnelWidth / 2;
