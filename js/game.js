@@ -33,10 +33,10 @@ var Game = {
 Game.initGeometry = function() {
   Game.stuff.markerGeometry = new THREE.PlaneGeometry(Game.properties.tunnelWidth, Game.properties.tunnelHeight);
   Game.stuff.markerGeometry = new THREE.EdgesGeometry(Game.stuff.markerGeometry);
-  
+
   Game.stuff.blockHGeometry = new THREE.BoxGeometry(Game.properties.tunnelWidth, Game.properties.blockSizeH, Game.properties.blockSize);
   Game.stuff.blockVGeometry = new THREE.BoxGeometry(Game.properties.blockSizeV, Game.properties.tunnelHeight, Game.properties.blockSize);
-  
+
   Game.stuff.blockHGeometryEdges = new THREE.EdgesGeometry(Game.stuff.blockHGeometry);
   Game.stuff.blockVGeometryEdges = new THREE.EdgesGeometry(Game.stuff.blockVGeometry);
   Game.stuff.blockMaterial = new THREE.LineBasicMaterial({
@@ -54,48 +54,50 @@ Game.initGeometry = function() {
 Game.initFont = function() {
   Game.loader = new THREE.FontLoader();
   Game.loader.load( 'fonts/helvetiker_regular.typeface.json', function (font) {
-    Game.font = font;    
+    Game.font = font;
   });
 }
 
-Game.init = function() {  
+Game.init = function() {
   // Create scene
   Game.scene = new THREE.Scene();
   Game.scene.background = new THREE.Color(Game.properties.backgroundColor);
   Game.scene.fog = new THREE.FogExp2(Game.properties.backgroundColor, 0.1);
-  
+
   // Create camera
   Game.camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
   Game.camera.near = 0.001;
   // Game.camera.fov = 90;
-  
+
   // Create renderer
   Game.renderer = new THREE.WebGLRenderer();
   Game.renderer.setSize(window.innerWidth * Game.scaleFactor, window.innerHeight * Game.scaleFactor, false);
   Game.renderer.domElement.id = "gameview";
   $("body").append(Game.renderer.domElement);
-  
+
   // Anaglyph effect
   Game.effect = new THREE.AnaglyphEffect(Game.renderer);
   Game.effect.setSize(window.innerWidth * Game.scaleFactor, window.innerWidth * Game.scaleFactor, false);
-  
+
   // Register window resize event
   window.addEventListener('resize', Game.onWindowResize, false);
   // Register mouse move event
   window.addEventListener('mousemove', Game.onMouseMove, false);
-  
+  // Register touch move event
+  window.addEventListener('touchmove', Game.onTouchMove, false);
+
   // Init Raycaster
   Game.stuff.raycaster = new THREE.Raycaster();
   Game.stuff.directionVector = new THREE.Vector3(0, 0, 1);
   Game.stuff.directionVector.normalize();
-  
+
   // Create world
   // Game.initFont();
   Game.initGeometry();
   Game.spawnTunnel();
   Game.spawnPlayer();
   Game.spawnLevel();
-  
+
   // Start game
   Game.lastFrame = new Date();
   Game.update();
@@ -122,40 +124,40 @@ Game.update = function() {
   // Update game time
   Game.currentFrame = new Date();
   Game.delta = Game.currentFrame - Game.lastFrame;
-  
+
   // Request next frame
   requestAnimationFrame(Game.update);
-  
+
   // Update camera
   Game.updateCamera();
-  
+
   // Update objects
   Game.updateObjects();
-  
+
   // Check for collision
   Game.checkCollision();
-  
+
   // Update score
   Game.updateScore();
-  
+
   // Render scene
   if (Game.properties.anaglyph) {
     Game.effect.render(Game.scene, Game.camera);
   } else {
     Game.renderer.render(Game.scene, Game.camera);
   }
-  
+
   // Update game time
   Game.lastFrame = Game.currentFrame;
 }
 
 Game.updateCamera = function() {
   if (Game.properties.tracker) {
-    // Use tracker position    
+    // Use tracker position
     Game.camera.position.x = (0.5 - Game.trackerX) * 2;
     Game.camera.position.y = (0.5 - Game.trackerY) * 1;
   } else {
-    // Use mouse position    
+    // Use mouse position
     Game.camera.position.x = (0.5 - Game.mouseX) * 2;
     Game.camera.position.y = (0.5 - Game.mouseY) * 1;
   }
@@ -168,14 +170,14 @@ Game.updateObjects = function() {
     block.position.z -= Game.properties.blockSpeed * Game.delta;
     if (block.position.z < 0) ;
   }
-  
+
   // Update closest block
   var closestBlock = Game.objects.blocks[Game.closestBlock];
   if (closestBlock.position.z < 0) {
     Game.resetBlock(closestBlock);
     Game.closestBlock = (Game.closestBlock + 1) % Game.properties.count;
   }
-  
+
   // Move all markers
   for (var i = 0; i < Game.objects.markers.length; i++) {
     var marker = Game.objects.markers[i];
@@ -201,7 +203,7 @@ Game.updateScore = function() {
     var currentDate = new Date();
     var time = currentDate - Game.gameStartDate;
     $("#score").text(time);
-    
+
     // Check if score needs to be shown
     // var current = Math.round(time / 10000) * 10000;
     // if (current != Game.stuff.currentScore) {
@@ -220,7 +222,7 @@ Game.showScore = function() {
     size: 0.5,
     height: 0
   });
-  
+
   Game.scoreMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: Game.properties.blocksColor }));
   Game.scoreMesh.position.set(-Game.properties.tunnelWidth / 2, -Game.properties.tunnelHeight / 4, -1.5);
   Game.scoreMesh.rotateY(Math.PI / 2);
@@ -233,25 +235,25 @@ Game.spawnLevel = function() {
     var block = Game.objects.blocks[i];
     Game.scene.remove(block);
   }
-  
+
   for (var i = 0; i < Game.objects.markers.length; i++) {
     var marker = Game.objects.markers[i];
     Game.scene.remove(marker);
   }
-  
+
   // Reset arrays
   Game.objects.blocks = [];
   Game.objects.markers = [];
-  
+
   // Calculate spacing
   Game.properties.blocksSpacing = Game.properties.tunnelLength / Game.properties.count;
-  
+
   // Create blocks
   for (var i = 0; i < Game.properties.count; i++) {
     Game.spawnBlock(i);
   }
   Game.closestBlock = 0;
-  
+
   // Create markers
   for (var i = 0; i < Game.properties.count / Game.properties.markersRate; i++) {
     Game.spawnMarker(i);
@@ -283,29 +285,29 @@ Game.spawnPlayer = function() {
 
 Game.spawnBlock = function(spacing) {
   if (!spacing) spacing = 0;
-  
+
   // Select geometry
   var geometryWireframe = Game.stuff.blockHGeometryEdges;
   var geometrySolid = Game.stuff.blockHGeometry;
-  
+
   var vertical = Math.random() >= 0.5;
   if (vertical) {
     geometryWireframe = Game.stuff.blockVGeometryEdges;
     geometrySolid = Game.stuff.blockVGeometry;
   }
-  
+
   // Wireframe
   var wireframeBlock = new THREE.LineSegments(geometryWireframe, Game.stuff.blockMaterial);
-  
+
   // Solid
   var block = new THREE.Mesh(geometrySolid, Game.stuff.blockMaterialSolid);
   block.add(wireframeBlock);
-  
+
   // Set properties
   block.isVertical = vertical;
   Game.resetBlock(block);
   block.position.z = spacing * Game.properties.blocksSpacing;
-  
+
   // Add block
   Game.objects.blocks.push(block);
   Game.scene.add(block);
@@ -354,12 +356,12 @@ Game.spawnMarker = function(spacing) {
 Game.resetMarker = function(marker) {
   // Reset position
   marker.position.z += Game.properties.tunnelLength;
-  
+
   // Remove score text
   if (marker.children.length) {
     marker.remove(marker.children[0]);
   }
-  
+
   // Append new text if needed
   if (Game.appendScoreToMarker) {
     Game.appendScoreToMarker = false;
@@ -377,4 +379,12 @@ Game.onWindowResize = function() {
 Game.onMouseMove = function(event) {
   Game.mouseX = event.pageX / window.innerWidth;
   Game.mouseY = event.pageY / window.innerHeight;
+}
+
+Game.onTouchMove = function(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  Game.mouseX = event.touches[0].pageX / window.innerWidth;
+  Game.mouseY = event.touches[0].pageY / window.innerHeight;
 }
